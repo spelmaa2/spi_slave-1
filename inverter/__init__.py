@@ -18,11 +18,12 @@ class inverter(vhdl,verilog,thesdk):
         return os.path.dirname(os.path.realpath(__file__)) + "/"+__name__
 
     def __init__(self,*arg): 
+        self.print_log(type='I', msg='Inititalizing %s' %(__name__)) 
         self.proplist = [ 'Rs' ];    # Properties that can be propagated from parent
         self.Rs =  100e6;            # Sampling frequency
         self.IOS=Bundle()
         self.IOS.Members['A']=IO(dir='in', iotype='sample', ionames=['A']) # Pointer for input data
-        self.IOS.Members['Z']= IO(dir='out', iotype='sample', ionames='Z')
+        self.IOS.Members['Z']= IO(dir='out', iotype='sample', ionames=['Z'], datatype='int')
             # Pointer for output data
         self.model='py';             # Can be set externally, but is not propagated
         self.par= False              # By default, no parallel processing
@@ -39,15 +40,28 @@ class inverter(vhdl,verilog,thesdk):
             self.copy_propval(parent,self.proplist)
             self.parent =parent;
 
-
         self.init()
 
     def init(self):
         if self.model=='sv':
             # Adds an entry named self.iofile_Bundle.Members['A']
-            _=verilog_iofile(self,name='A',dir='in')
-             # Output file reader do not know if they are complex or not.
-            _=verilog_iofile(self,name='Z',datatype='int') #int or complex 
+            # For inputs this is automated
+            for ioname, val in self.IOS.Members.items():
+                print(val.dir)
+                if val.dir is 'in' and val.iotype is not 'file':
+                    _=verilog_iofile(self,name='A',dir='in')
+                elif val.dir is 'out' and val.iotype is not 'file': 
+                    if val.datatype is not None:
+                        _=verilog_iofile(self,name=ioname,datatype=val.datatype) #int or complex 
+                    else:
+                        # Output file reader do not know if they are complex or not.
+                        # This could be automated if there would be a way to determine the output
+                        # datatype fom the assingmnet target
+                        self.print_log(type='F', 
+                                msg='Attribute \'datatype\' not defined for output %s.\n Mandatory values for ouput IO associated with verilogfile are \'int\' | \'sint\' | \'complex\' | \'scomplex\'.' %(ioname)
+                            )
+
+            #_=verilog_iofile(self,name='Z',datatype='int') #int or complex 
             self.vlogparameters=dict([ ('g_Rs',self.Rs),])
 
         ### Lets fix this later on
@@ -98,14 +112,13 @@ class inverter(vhdl,verilog,thesdk):
 
     # Automate this bsed in dir
     def connect_inputs(self):
-        self.iofile_bundle.Members['A'].Data=self.IOS.Members['A'].Data.reshape(-1,1)
         # Create TB connectors from the control file
         # See controller.py
         for ioname,val in self.IOS.Members.items():
-            if val.iotype=='file': #If the type is file, the Data is a bundle
-                print(ioname)
-                print(val)
-                print(val.iotype)
+            if val.iotype is not 'file' and val.dir is 'in': 
+                # Data must be properly shaped
+                self.iofile_bundle.Members[ioname].Data=self.IOS.Members[ioname].Data
+            elif val.iotype is 'file': #If the type is file, the Data is a bundle
                 for bname,bval in val.Data.Members.items():
                     for connector in bval.verilog_connectors:
                         self.tb.connectors.Members[connector.name]=connector
@@ -143,8 +156,11 @@ class inverter(vhdl,verilog,thesdk):
         # Verilog module does not contain information if the bus is signed or not
         # Prior to writing output file, the type of the connecting wire defines
         # how the bus values are interpreted. 
-        #self.tb.connectors.Members[name].type='signed'
-        pass
+        for ioname,val in self.IOS.Members.items():
+            if ioname in self.iofile_bundle.Members and val.dir is 'out':
+                if (val.datatype is 'sint' ) or (val.datatype is 'scomplex'):
+                    for assname in val.ionames:
+                        self.tb.connectors.Members[assname].type='signed'
 
     def define_testbench(self):
         #Initialize testbench
@@ -181,8 +197,6 @@ class inverter(vhdl,verilog,thesdk):
         for name, val in self.tb.dut_instance.ios.Members.items():
             if val.cls=='input':
                 val.connect.init='\'b0'
-
-
 
 if __name__=="__main__":
     import matplotlib.pyplot as plt
