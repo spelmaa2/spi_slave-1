@@ -18,17 +18,13 @@ class controller(verilog):
         self.step=int(1/(self.Rs*1e-12))   #Time increment for control
         self.time=0
         self.IOS=Bundle()
-        self.IOS.Members['control_write']= IO(
-                name='control_write', 
-                dir='in',
-                iotype='file',
-                Data=Bundle() 
-                )        #We use this for writing
-        self.IOS.Members['control_read']= IO(
-                name='control_read', 
-                iotype='file',
-                Data=Bundle() 
-                )        #We use this for writing
+        self.IOS.Members['control_write']= IO()        #We use this for writing
+        _=verilog_iofile(self, name='control_write', dir='in', iotype='event')        
+        #Permanent pointer assignment to write io
+        self.IOS.Members['control_write'].Data=self.iofile_bundle.Members['control_write']
+ 
+        self.IOS.Members['control_read']= IO()        #We use this for reading
+        _=verilog_iofile(self, name='control_read', dir='out', iotype='event', datatype='int')        
 
         self.model='py';             #can be set externally, but is not propagated
         self.par= False              #By default, no parallel processing
@@ -79,19 +75,14 @@ class controller(verilog):
         self._vlogparameters =dict([('Rs',self.Rs)])
         # This gets interesting
         # IO is a file data stucture
-        iofiles_write=[
-                'control_write'
-                ]
-        for name in iofiles_write:
-            self.IOS.Members[name].Data.Members[name]=verilog_iofile(self,name=name,
-                    dir='in',iotype='event')
         self.define_control()
-    
+
     def reset_control_sequence(self):
-        f=self.IOS.Members['control_write'].Data.Members['control_write']
+        f=self.iofile_bundle.Members['control_write']
         self.time=0
-        f.data= np.array([])
+        f.Data= np.array([])
         f.set_control_data(init=0) # Initialize to zeros at time 0
+        self.assign_io()
 
 
     # First we start to control Verilog simulations with 
@@ -113,7 +104,7 @@ class controller(verilog):
                 self.connectors.Members[name].init=''
             scansigs_write.append(name) 
 
-        f=self.IOS.Members['control_write'].Data.Members['control_write']
+        f=self.iofile_bundle.Members['control_write']
         #define connectors controlled by this file in order of the list provided 
         f.verilog_connectors=self.connectors.list(names=scansigs_write)
         f.set_control_data(init=0) # Initialize to zeros at time 0
@@ -121,7 +112,7 @@ class controller(verilog):
     #Methods to reset and to start datafeed
     def reset(self):
         #start defining the file
-        f=self.IOS.get(name='control_write').Data.Members['control_write']
+        f=self.iofile_bundle.Members['control_write']
         for name in [ 'reset', ]:
             f.set_control_data(time=self.time,name=name,val=1)
 
@@ -132,7 +123,7 @@ class controller(verilog):
             f.set_control_data(time=self.time,name=name,val=0)
 
     def start_datafeed(self):
-        f=self.IOS.Members['control_write'].Data.Members['control_write']
+        f=self.iofile_bundle.Members['control_write']
         for name in [ 'initdone', ]:
             f.set_control_data(time=self.time,name=name,val=1)
         self.step_time()

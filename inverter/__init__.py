@@ -22,14 +22,21 @@ class inverter(vhdl,verilog,thesdk):
         self.proplist = [ 'Rs' ];    # Properties that can be propagated from parent
         self.Rs =  100e6;            # Sampling frequency
         self.IOS=Bundle()
-        self.IOS.Members['A']=IO(dir='in', iotype='sample', ionames=['A']) # Pointer for input data
-        self.IOS.Members['Z']= IO(dir='out', iotype='sample', ionames=['Z'], datatype='int')
-        #self.IOS.Members['Z']= IO(dir='out', iotype='sample', datatype='int')
-            # Pointer for output data
+        self.IOS.Members['A']=IO() # Pointer for input data
+        _=verilog_iofile(self,name='A', dir='in', iotype='sample', ionames=['A']) # IO file for input A
+        
+        self.IOS.Members['Z']= IO()
+        _= verilog_iofile(self,name='Z', dir='out', iotype='sample', ionames=['Z'], datatype='int')
         self.model='py';             # Can be set externally, but is not propagated
         self.par= False              # By default, no parallel processing
         self.queue= []               # By default, no parallel processing
-        #self.IOS.Members['control_write']= IO(
+        self.IOS.Members['control_write']= IO() 
+        # This is a placeholder, file is created elsewher
+        _=verilog_iofile(self, name='control_write', dir='in', iotype='file') 
+        
+        # No more bundles of files. No exceptions
+        #Bundle of control input files
+        
         #        name='control_write', 
         #        dir='in',
         #        iotype='file',
@@ -100,9 +107,9 @@ if __name__=="__main__":
     duts[1].model='sv'
     for d in duts: 
         d.Rs=rs
-        #d.interactive_verilog=True
+        d.interactive_verilog=True
         d.IOS.Members['A'].Data=indata
-        #d.IOS.Members['control_write']=controller.IOS.Members['control_write']
+        d.IOS.Members['control_write']=controller.IOS.Members['control_write']
         d.init()
         d.run()
 
