@@ -20,13 +20,20 @@ class inverter(vhdl,verilog,thesdk):
     def __init__(self,*arg): 
         self.proplist = [ 'Rs' ];    # Properties that can be propagated from parent
         self.Rs =  100e6;            # Sampling frequency
-        self.A = IO(dir='in', iotype='sample'); # Pointer for input data
+        self.IOS=Bundle()
+        self.IOS.Members['A']=IO(dir='in', iotype='sample', ionames=['A']) # Pointer for input data
+        self.IOS.Members['Z']= IO(dir='out', iotype='sample', ionames='Z')
+            # Pointer for output data
         self.model='py';             # Can be set externally, but is not propagated
         self.par= False              # By default, no parallel processing
         self.queue= []               # By default, no parallel processing
-        self.Z = IO(dir='out', iotype='sample'); # Pointer for input data
-        self.control_write = IO(dir='in', iotype='event'); # Pointer for input data
-        self.control_write.Data = Bundle() # This is actually a bundle of files
+        self.IOS.Members['control_write']= IO(
+                name='control_write', 
+                dir='in',
+                iotype='file',
+                Data=Bundle() 
+                )        #Bundle of control input files
+
         if len(arg)>=1:
             parent=arg[0]
             self.copy_propval(parent,self.proplist)
@@ -52,10 +59,10 @@ class inverter(vhdl,verilog,thesdk):
             self.vhdlparameters =dict([('g_Rs',self.Rs)])
 
     def main(self):
-        out=np.array(1-self.A.Data)
+        out=np.array(1-self.IOS.Members['A'].Data)
         if self.par:
             self.queue.put(out)
-        self.Z.Data=out
+        self.IOS.Members['Z'].Data=out
 
     def run(self,*arg):
         if len(arg)>0:
@@ -65,42 +72,79 @@ class inverter(vhdl,verilog,thesdk):
             self.main()
         else: 
           if self.model=='sv':
-              self.control_write.Data.Members['control_write'].adopt(parent=self)
+              # Adoption transfers parenthood of the files to this instance
+              self.IOS.Members['control_write'].Data.Members['control_write'].adopt(parent=self)
               # Create testbench and execute the simulation
               self.define_testbench()
+              self.connect_inputs()
+              self.format_ios()
+              self.tb.generate_contents()
               self.tb.export(force=True)
-              self.connect_ios()
               self.write_infile()
               self.run_verilog()
               self.read_outfile()
               
               #There should be a method for this
-              self.Z.Data=self.iofile_bundle.Members['Z'].Data
+              self.IOS.Members['Z'].Data=self.iofile_bundle.Members['Z'].Data
               
               #This is for parallel processing
               if self.par:
-                  self.queue.put(self.Z.Data)
+                  self.queue.put(self.IOS.Members[Z].Data)
               del self.iofile_bundle #Large files should be deleted
 
           elif self.model=='vhdl':
               self.run_vhdl()
               self.read_outfile()
 
-    def connect_ios(self):
-        self.iofile_bundle.Members['A'].Data=self.A.Data.reshape(-1,1)
+    # Automate this bsed in dir
+    def connect_inputs(self):
+        self.iofile_bundle.Members['A'].Data=self.IOS.Members['A'].Data.reshape(-1,1)
+        # Create TB connectors from the control file
+        # See controller.py
+        for ioname,val in self.IOS.Members.items():
+            if val.iotype=='file': #If the type is file, the Data is a bundle
+                print(ioname)
+                print(val)
+                print(val.iotype)
+                for bname,bval in val.Data.Members.items():
+                    for connector in bval.verilog_connectors:
+                        self.tb.connectors.Members[connector.name]=connector
+                        # Connect them to DUT
+                        try: 
+                            self.dut.ios.Members[connector.name].connect=connector
+                        except:
+                            pass
 
+        # IO file connector definitions
+        # Define what signals and in which order and format are read form the files
+        # i.e. verilog_connectors of the file
+        # Every IO file should ha
+        name='Z'      # Name of the file
+        ionames=[]    # List of verilog signals handled by tha file
+        ionames+=['Z']
+        self.iofile_bundle.Members[name].verilog_connectors=\
+                self.tb.connectors.list(names=ionames)
+
+        # Write outputs only if reset phase is done 
+        # cond string appended to validity requirement of the io
+        # See controller.py
+        self.iofile_bundle.Members[name].verilog_io_condition_append(cond='&& initdone')
+
+        name='A'
+        ionames=[]
+        ionames+=['A']
+        self.iofile_bundle.Members[name].verilog_connectors=\
+                self.tb.connectors.list(names=ionames)
+        self.iofile_bundle.Members[name].verilog_io_condition='initdone'
+
+    # Define if the signals are signed or not
+    # Can these be deducted?
     def format_ios(self):
+        # Verilog module does not contain information if the bus is signed or not
+        # Prior to writing output file, the type of the connecting wire defines
+        # how the bus values are interpreted. 
+        #self.tb.connectors.Members[name].type='signed'
         pass
-
-    def write_infile(self):
-        for name, val in self.iofile_bundle.Members.items():
-            if val.dir=='in':
-                self.iofile_bundle.Members[name].write()
-
-    def read_outfile(self):
-        for name, val in self.iofile_bundle.Members.items():
-            if val.dir=='out':
-                 self.iofile_bundle.Members[name].read()
 
     def define_testbench(self):
         #Initialize testbench
@@ -122,20 +166,15 @@ class inverter(vhdl,verilog,thesdk):
         #Define testbench verilog file
         self.tb.file=self.vlogtbsrc
         
-        # Create TB connectors from the control file
-        # See controller.py
-        for connector in self.control_write.Data.Members['control_write'].verilog_connectors:
-            self.tb.connectors.Members[connector.name]=connector
-            # Connect them to DUT
-            try: 
-                self.dut.ios.Members[connector.name].connect=connector
-            except:
-                pass
-
-        # Create clock as inverter does not have it 
+        # Create clock if nonexistent 
         if 'clock' not in self.tb.dut_instance.ios.Members:
             self.tb.connectors.Members['clock']=verilog_connector(
                     name='clock',cls='reg', init='\'b0')
+
+        # Create reset if nonexistent 
+        if 'reset' not in self.tb.dut_instance.ios.Members:
+            self.tb.connectors.Members['reset']=verilog_connector(
+                    name='reset',cls='reg', init='\'b0')
 
         ## Start initializations
         #Init the signals connected to the dut input to zero
@@ -143,33 +182,7 @@ class inverter(vhdl,verilog,thesdk):
             if val.cls=='input':
                 val.connect.init='\'b0'
 
-        # IO file connector definitions
-        # Define what signals and in which order and format are read form the files
-        # i.e. verilog_connectors of the file
-        # Every IO file should ha
-        name='Z' #Name of the file
-        ionames=[]    # List of verilog signals handled by tha file
-        ionames+=['Z']
-        self.iofile_bundle.Members[name].verilog_connectors=\
-                self.tb.connectors.list(names=ionames)
 
-        # Set the testbench connector type to signed if needed
-        for name in ionames:
-            self.tb.connectors.Members[name].type='signed'
-
-        # Write outputs only if reset phase is done 
-        # cond string appended to validity requirement of the io
-        # See controller.py
-        self.iofile_bundle.Members[name].verilog_io_condition_append(cond='&& initdone')
-
-        name='A'
-        ionames=[]
-        ionames+=['A']
-        self.iofile_bundle.Members[name].verilog_connectors=\
-                self.tb.connectors.list(names=ionames)
-        self.iofile_bundle.Members[name].verilog_io_condition='initdone'
-
-        self.tb.generate_contents()
 
 if __name__=="__main__":
     import matplotlib.pyplot as plt
@@ -191,8 +204,8 @@ if __name__=="__main__":
     for d in duts: 
         d.Rs=rs
         #d.interactive_verilog=True
-        d.A.Data=indata
-        d.control_write=controller.control_write
+        d.IOS.Members['A'].Data=indata
+        d.IOS.Members['control_write']=controller.IOS.Members['control_write']
         d.init()
         d.run()
 
@@ -207,7 +220,7 @@ if __name__=="__main__":
                 x,indata[0:11,0],'-.'
             )
         markerline, stemlines, baseline = plt.stem(\
-                x, duts[k].Z.Data[0+latency[k]:11+latency[k],0], '-.'
+                x, duts[k].IOS.Members['Z'].Data[0+latency[k]:11+latency[k],0], '-.'
             )
         plt.setp(markerline,'markerfacecolor', 'b','linewidth',2)
         plt.setp(stemlines, 'linestyle','solid','color','b', 'linewidth', 2)
