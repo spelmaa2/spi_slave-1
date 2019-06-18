@@ -117,7 +117,6 @@ class controller(verilog):
         #define connectors controlled by this file in order of the list provided 
         f.verilog_connectors=self.connectors.list(names=scansigs_write)
         f.set_control_data(init=0) # Initialize to zeros at time 0
-        print('Fooba')
 
     #Methods to reset and to start datafeed
     def reset(self):
@@ -134,8 +133,6 @@ class controller(verilog):
 
     def start_datafeed(self):
         f=self.IOS.Members['control_write'].Data.Members['control_write']
-        print(f.Data)
-        print(f.iotype)
         for name in [ 'initdone', ]:
             f.set_control_data(time=self.time,name=name,val=1)
         self.step_time()
