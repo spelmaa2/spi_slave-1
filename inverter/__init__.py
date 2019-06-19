@@ -12,7 +12,7 @@ from verilog.testbench import *
 from verilog.testbench import testbench as vtb
 from vhdl import *
 
-class inverter(vhdl,verilog,thesdk):
+class inverter(verilog,thesdk):
     @property
     def _classfile(self):
         return os.path.dirname(os.path.realpath(__file__)) + "/"+__name__
