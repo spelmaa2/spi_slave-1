@@ -12,7 +12,7 @@ from verilog.testbench import *
 from verilog.testbench import testbench as vtb
 from vhdl import *
 
-class inverter(verilog,thesdk):
+class spi(verilog,thesdk):
     @property
     def _classfile(self):
         return os.path.dirname(os.path.realpath(__file__)) + "/"+__name__
@@ -90,19 +90,19 @@ class inverter(verilog,thesdk):
 
 if __name__=="__main__":
     import matplotlib.pyplot as plt
-    from  inverter import *
-    from  inverter.controller import controller as inverter_controller
+    from  spi import *
+    from  spi.controller import controller as spi_controller
     import pdb
     length=1024
     rs=100e6
     indata=np.random.randint(2,size=length).reshape(-1,1);
-    controller=inverter_controller()
+    controller=spi_controller()
     controller.Rs=rs
     #controller.reset()
     #controller.step_time()
     controller.start_datafeed()
 
-    duts=[inverter() for i in range(2) ]
+    duts=[spi() for i in range(2) ]
     duts[0].model='py'
     duts[1].model='sv'
     for d in duts: 

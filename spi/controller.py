@@ -39,7 +39,7 @@ class controller(verilog):
         # We now where the verilog file is. 
         # Let's read in the file to have IOs defined
         self.dut=verilog_module(file=self.vlogsrcpath 
-                + '/inverter.sv')
+                + '/spi.sv')
 
         # Define the signal connectors associated with this 
         # controller

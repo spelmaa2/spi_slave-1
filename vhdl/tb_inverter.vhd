@@ -1,4 +1,4 @@
--- This is an inverter VHDL model
+-- This is an spi VHDL model
 -- Initially written by Marko Kosunen
 -- Last modification by Marko Kosunen, marko.kosunen@aalto.fi, 08.08.2017 17:35
 LIBRARY ieee;
@@ -6,7 +6,7 @@ USE ieee.std_logic_1164.all;
 USE ieee.numeric_std.all;
 USE std.textio.all;
 
-ENTITY tb_inverter IS
+ENTITY tb_spi IS
     GENERIC(g_Rs     : real := 1.0e9;
             g_infile : STRING:="/tools/designs/mkosunen/mkosunen/FADER_MATLAB/OO_MIMO/simulations/Inverter/Modelsim/A.txt";
             g_outfile: STRING:="/tools/designs/mkosunen/mkosunen/FADER_MATLAB/OO_MIMO/simulations/Inverter/Modelsim/Z.txt"
@@ -14,7 +14,7 @@ ENTITY tb_inverter IS
            ); 
 END ENTITY;
 
-ARCHITECTURE behav OF tb_inverter IS
+ARCHITECTURE behav OF tb_spi IS
 
 --FILE f_infile : text open read_mode  is "/tools/designs/mkosunen/mkosunen/FADER_MATLAB/OO_MIMO/simulations/Inverter/Modelsim/infile.txt";
 FILE f_infile  : text open read_mode  is g_infile; 
@@ -79,7 +79,7 @@ writer:PROCESS(s_clk)
 END PROCESS;
 
 
-DUT: ENTITY work.inverter(rtl)
+DUT: ENTITY work.spi(rtl)
     PORT MAP (A => s_A,
               Z => s_Z
              );

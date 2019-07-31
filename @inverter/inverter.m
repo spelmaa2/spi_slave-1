@@ -1,6 +1,6 @@
 % INVERTER class 
 % Last modification by Marko Kosunen, marko.kosunen@aalto.fi, 12.12.2017 00:17
-classdef inverter <  rtl & thesdk & handle
+classdef spi <  rtl & thesdk & handle
     properties (SetAccess = public)
         %Default values required at this hierarchy level or below.
         parent ;
@@ -52,7 +52,7 @@ classdef inverter <  rtl & thesdk & handle
             rtlcmd = [ submission rtllibcmd   ' && ' rtllibmapcmd  ' && ' rtlcompcmd  ' && ' rtlsimcmd ];
         end;
         
-        function obj = inverter(varargin)
+        function obj = spi(varargin)
             if nargin>=1;
                 parent=varargin{1}; 
                 %Properties to copy from the parent

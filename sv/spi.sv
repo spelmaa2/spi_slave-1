@@ -1,4 +1,4 @@
-module inverter( input reset,
+module spi( input reset,
                  input A, 
                  output Z );
 //reset does nothing
