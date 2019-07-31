@@ -1,0 +1,1 @@
+../vhdl_ecd_submodule/vhdl/synchronizer_n.vhd

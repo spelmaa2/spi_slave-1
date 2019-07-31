@@ -1,0 +1,1 @@
+../vhdl_ecd_submodule/vhdl/spi_slave.vhd
