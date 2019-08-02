@@ -95,7 +95,7 @@ if __name__=="__main__":
     dut.model='vhdl'
     dut.run()
     print(dut.dut.definition)
-    pdb.set_trace()
+#    pdb.set_trace()
 
 
     #duts=[spi_slave() for i in range(2) ]
