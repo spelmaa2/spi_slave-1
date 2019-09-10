@@ -1,0 +1,1 @@
+../chisel/verilog/spi_slave.v
