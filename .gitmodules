@@ -1,3 +1,6 @@
 [submodule "vhdl_ecd_submodule"]
 	path = vhdl_ecd_submodule
 	url = git@bubba.ecdl.hut.fi:ECDVHDL/SPI.git
+[submodule "chisel"]
+	path = chisel
+	url = git@bubba.ecdl.hut.fi:Chisel-blocks/spi_slave.git

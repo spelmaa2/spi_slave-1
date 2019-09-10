@@ -3,7 +3,7 @@
 #Written by by Marko Kosunen, marko.kosunen@aalto.fi, 2017
 DIR=$( cd `dirname $0` && pwd )
 SUBMODULES="\
-    ./vhdl_ecd_submodule \
+    ./vhdl_ecd_submodule chisel \
     "
 
 git submodule sync

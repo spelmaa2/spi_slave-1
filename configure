@@ -5,8 +5,8 @@ MODULE=$( basename ${THISDIR})
 #Defines TheSDK environment variables
 . ${THISDIR}/../../TheSDK.config
 
-#echo "Configuring FFT chisel generator"
-#cd $THISDIR/chisel && ./configure && cd ..
+echo "Configuring spi_slave chisel generator"
+cd $THISDIR/chisel && ./configure && cd ..
 
 CURRENTFILE=${THISDIR}/Makefile
 echo "Generating Makefile"
@@ -16,21 +16,21 @@ cat << EOF > ${THISDIR}/Makefile
 #.PHONY: all sim chisel clean
 .PHONY: all sim clean
 
-#all: chisel sim
-all: sim
+all: chisel sim
+#all: sim
 
 #sim: chisel
 sim:
 	cd ${THISDIR}/${MODULE} && \\
 	${PYL} __init__.py
 
-#chisel:
-#	cd $THISDIR/chisel && \\
-#	make
+chisel:
+	cd $THISDIR/chisel && \\
+	make
 
 clean:
-	#cd ${THISDIR}/chisel && \\
-	#make clean && \\
+	cd ${THISDIR}/chisel && \\
+	make clean && \\
 	find ${THISDIR}/Simulations -name \*tmp\*.txt -exec rm {} \\; 
    
 EOF
