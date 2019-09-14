@@ -21,16 +21,15 @@ class spi_slave(vhdl,thesdk):
         self.proplist = [ 'Rs' ];    # Properties that can be propagated from parent
         self.Rs =  100e6;            # Sampling frequency
         self.IOS=Bundle()
-        self.IOS.Members['A']=IO() # Pointer for input data
-        #_=verilog_iofile(self,name='A', dir='in', iotype='sample', ionames=['A']) # IO file for input A
+        self.IOS.Members['monitor_in']=IO() # Pointer for input data
+        self.IOS.Members['config_out']=IO() # Pointer for input data
+        self.IOS.Members['miso']=IO()       # Pointer for input data
         
-        self.IOS.Members['Z']= IO()
-        #_= vhdl_iofile(self,name='Z', dir='out', iotype='sample', ionames=['Z'], datatype='int')
         self.model='py';             # Can be set externally, but is not propagated
         self.par= False              # By default, no parallel processing
         self.queue= []               # By default, no parallel processing
-        self.IOS.Members['control_write']= IO() 
-        # This is a placeholder, file is created elsewher
+        #Collects mosi, cs and sclk controlled by master
+        self.IOS.Members['spi_master_write']= IO() 
         #_=verilog_iofile(self, name='control_write', dir='in', iotype='file') 
         
         if len(arg)>=1:
@@ -47,10 +46,7 @@ class spi_slave(vhdl,thesdk):
         #    self.print_log(type='F', msg='VHDL simulation is not supported with v1.2\n Use v1.1')
 
     def main(self):
-        out=np.array(1-self.IOS.Members['A'].Data)
-        if self.par:
-            self.queue.put(out)
-        self.IOS.Members['Z'].Data=out
+        pass
 
     def run(self,*arg):
         if len(arg)>0:
@@ -60,12 +56,17 @@ class spi_slave(vhdl,thesdk):
             self.main()
         else: 
           if self.model=='sv':
-             self.print_log(type='F', msg='Verilog simulation is not supported')
+              self.verilogparameters=dict([ ('g_Rs',self.Rs),]) #Defines the sample rate
+              self.dut=verilog_module(file=self.entitypath+'/sv/'+'spi_slave.sv')
+              #if self.par:
+              #   self.queue.put(self.IOS.Members[Z].Data)
+              del self.iofile_bundle #Large files should be deletedl
+
           elif self.model=='vhdl':
               self.vhdlparameters=dict([ ('g_Rs',self.Rs),]) #Defines the sample rate
               self.dut=vhdl_entity(file=self.entitypath+'/vhdl/'+'spi_slave.vhd')
-              if self.par:
-                 self.queue.put(self.IOS.Members[Z].Data)
+              #if self.par:
+              #   self.queue.put(self.IOS.Members[Z].Data)
               del self.iofile_bundle #Large files should be deletedl
 
 
@@ -92,9 +93,9 @@ if __name__=="__main__":
     #controller.start_datafeed()
 
     dut=spi_slave()
-    dut.model='vhdl'
+    dut.model='sv'
     dut.run()
-    print(dut.dut.definition)
+    print(dut.tb)
 #    pdb.set_trace()
 
 
