@@ -18,8 +18,9 @@ class controller(verilog):
         self.step=int(1/(self.Rs*1e-12))   #Time increment for control
         self.time=0
         self.IOS=Bundle()
-        self.IOS.Members['control_write']= IO()        #We use this for writing
-        _=verilog_iofile(self, name='control_write', dir='in', iotype='event')        
+        #self.IOS.Members['data_string']=IO()        #This is the control strin we feed in
+        self.IOS.Members['control_write']= IO()    #We use this for writing
+        _=verilog_iofile(self,name='control_write', dir='in', iotype='event', ionames=['reset', 'initdone', 'io_cs', 'io_mosi', 'io_sclk'])
         #Permanent pointer assignment to write io
         self.IOS.Members['control_write'].Data=self.iofile_bundle.Members['control_write']
  
@@ -39,7 +40,7 @@ class controller(verilog):
         # We now where the verilog file is. 
         # Let's read in the file to have IOs defined
         self.dut=verilog_module(file=self.vlogsrcpath 
-                + '/spi.sv')
+                + '/spi_slave.sv')
 
         # Define the signal connectors associated with this 
         # controller
@@ -62,6 +63,9 @@ class controller(verilog):
         self.signallist_write=[
             ('reset', 1),
             ('initdone',0),
+            ('io_mosi',0),
+            ('io_sclk',0),
+            ('io_cs',1),
         ]
 
         #These are signals not in dut
@@ -113,8 +117,8 @@ class controller(verilog):
     def reset(self):
         #start defining the file
         f=self.iofile_bundle.Members['control_write']
-        for name in [ 'reset', ]:
-            f.set_control_data(time=self.time,name=name,val=1)
+        for name,value in self.signallist_write:
+            f.set_control_data(time=self.time,name=name,val=value)
 
         # After awhile, switch off reset 
         self.step_time(step=15*self.step)
@@ -127,4 +131,23 @@ class controller(verilog):
         for name in [ 'initdone', ]:
             f.set_control_data(time=self.time,name=name,val=1)
         self.step_time()
+
+    def write_spi(self,**kwargs):
+        value=kwargs.get('value')
+        #Cpol0 Cpha1
+        #This is a method that can be called multiple times appending a write sequence
+        # to a previous wirte sequence
+        f=self.iofile_bundle.Members['control_write']
+        f.set_control_data(time=self.time,name='io_cs',val=0)
+        f.set_control_data(time=self.time,name='io_sclk',val=0)
+        for bit in list(value):
+            self.step_time(step=16*self.step)
+            f.set_control_data(time=self.time,name='io_sclk',val=1)
+            f.set_control_data(time=self.time,name='io_mosi',val=bit)
+            self.step_time(step=16*self.step)
+  
+            f.set_control_data(time=self.time,name='io_sclk',val=0)
+        f.set_control_data(time=self.time,name='io_cs',val=1)
+
+
 

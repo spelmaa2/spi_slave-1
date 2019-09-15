@@ -14,7 +14,7 @@ echo "Generating Makefile"
 cat << EOF > ${THISDIR}/Makefile
 
 #.PHONY: all sim chisel clean
-.PHONY: all sim clean
+.PHONY: all chisel sim clean
 
 all: chisel sim
 #all: sim
@@ -26,7 +26,7 @@ sim:
 
 chisel:
 	cd $THISDIR/chisel && \\
-	make
+	make cfg_length=4 mon_length=4
 
 clean:
 	cd ${THISDIR}/chisel && \\
