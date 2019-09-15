@@ -63,9 +63,11 @@ class spi_slave(vhdl,verilog,thesdk):
               #self.vlogmodulefiles=list(['async_set_register'])
               self.vlogparameters=dict([ ('g_Rs',self.Rs),]) #Defines the sample rate
               self.run_verilog()
+
               #if self.par:
               #   self.queue.put(self.IOS.Members[Z].Data)
               del self.iofile_bundle #Large files should be deleted
+              self.IOS.Members['miso'].Data=self.IOS.Members['miso'].Data.astype('int')
 
           elif self.model=='vhdl':
               self.vhdlparameters=dict([ ('g_Rs',self.Rs),]) #Defines the sample rate
@@ -100,6 +102,7 @@ if __name__=="__main__":
     controller.step_time()
     controller.start_datafeed()
     controller.step_time()
+    #Should this be a string or array
     controller.write_spi(value='10110011')
     controller.step_time()
 #    pdb.set_trace()
@@ -117,6 +120,8 @@ if __name__=="__main__":
         d.IOS.Members['control_write']=controller.IOS.Members['control_write']
         d.init()
         d.run()
+
+    print('Vector received is \n%s' %(d.IOS.Members['miso'].Data))
 
     # THIS IS A PLOT EXAMPLE FROM THE PAST
     # NOT DESIGNED FOR THE SPI SLAVE
