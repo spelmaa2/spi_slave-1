@@ -60,7 +60,7 @@ class spi_slave(vhdl,verilog,thesdk):
             self.main()
         else: 
           if self.model=='sv':
-              #self.vlogmodulefiles=list(['async_set_register'])
+              self.vlogmodulefiles=list(['async_set_register.v'])
               self.vlogparameters=dict([ ('g_Rs',self.Rs),]) #Defines the sample rate
               self.run_verilog()
 
