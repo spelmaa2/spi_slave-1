@@ -4,10 +4,10 @@ import os
 
 import numpy as np
 from thesdk import *
-from verilog import *
-from verilog.module import *
+from rtl import *
+from rtl.module import *
 
-class controller(verilog):
+class controller(rtl):
     @property
     def _classfile(self):
         return os.path.dirname(os.path.realpath(__file__)) + "/"+__name__
@@ -20,12 +20,12 @@ class controller(verilog):
         self.IOS=Bundle()
         #self.IOS.Members['data_string']=IO()        #This is the control strin we feed in
         self.IOS.Members['control_write']= IO()    #We use this for writing
-        _=verilog_iofile(self,name='control_write', dir='in', iotype='event', ionames=['reset', 'initdone', 'io_cs', 'io_mosi', 'io_sclk'])
+        _=rtl_iofile(self,name='control_write', dir='in', iotype='event', ionames=['reset', 'initdone', 'io_cs', 'io_mosi', 'io_sclk'])
         #Permanent pointer assignment to write io
         self.IOS.Members['control_write'].Data=self.iofile_bundle.Members['control_write']
  
         self.IOS.Members['control_read']= IO()        #We use this for reading
-        _=verilog_iofile(self, name='control_read', dir='out', iotype='event', datatype='int')        
+        _=rtl_iofile(self, name='control_read', dir='out', iotype='event', datatype='int')        
 
         self.model='py';             #can be set externally, but is not propagated
         self.par= False              #By default, no parallel processing
@@ -76,7 +76,7 @@ class controller(verilog):
         self.init()
 
     def init(self):
-        self._vlogparameters =dict([('Rs',self.Rs)])
+        self._rtlparameters =dict([('Rs',self.Rs)])
         # This gets interesting
         # IO is a file data stucture
         self.define_control()
@@ -100,7 +100,7 @@ class controller(verilog):
         # Definition. File should be created in the testbench
         scansigs_write=[]
         for name, val in self.signallist_write:
-            # We manipulate connectors as verilog_iofile operate on those
+            # We manipulate connectrtlrtl_iofile operate on those
             if name in self.newsigs_write:
                 self.connectors.new(name=name, cls='reg')
             else:
@@ -133,6 +133,11 @@ class controller(verilog):
         self.step_time()
 
     def write_spi(self,**kwargs):
+        ''' Parameters
+            ----------
+                value: Binary string. Lsb part will be replaced by the monitor resister value
+                       To fed in LSB first. 
+         '''
         value=kwargs.get('value')
         #Cpol0 Cpha1
         #This is a method that can be called multiple times appending a write sequence
@@ -140,13 +145,16 @@ class controller(verilog):
         f=self.iofile_bundle.Members['control_write']
         f.set_control_data(time=self.time,name='io_cs',val=0)
         f.set_control_data(time=self.time,name='io_sclk',val=0)
-        for bit in list(value):
+        for bit in list(value)[::-1]:
             self.step_time(step=16*self.step)
             f.set_control_data(time=self.time,name='io_sclk',val=1)
             f.set_control_data(time=self.time,name='io_mosi',val=bit)
             self.step_time(step=16*self.step)
   
             f.set_control_data(time=self.time,name='io_sclk',val=0)
+        self.step_time(step=16*self.step)
+        f.set_control_data(time=self.time,name='io_cs',val=1)
+        self.step_time(step=16*self.step)
         f.set_control_data(time=self.time,name='io_cs',val=1)
 
 
