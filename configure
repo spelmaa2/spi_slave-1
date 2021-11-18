@@ -12,7 +12,8 @@ CURRENTFILE=${THISDIR}/Makefile
 echo "Generating Makefile"
 
 cat << EOF > ${THISDIR}/Makefile
-
+cfg_length ?= 4
+mon_length ?= 4
 #.PHONY: all sim chisel clean
 .PHONY: all chisel sim clean
 
@@ -26,7 +27,7 @@ sim:
 
 chisel:
 	cd $THISDIR/chisel && \\
-	make cfg_length=4 mon_length=4
+    make cfg_length=\$(cfg_length) mon_length=\$(mon_length)
 
 clean:
 	cd ${THISDIR}/chisel && \\
